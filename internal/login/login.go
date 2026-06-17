@@ -83,8 +83,8 @@ type Account struct {
 	CustomerCode      string `json:"customerCode"`
 	Password          string `json:"-"`
 	TGC               string `json:"tgc"`
-	PrimaryCredential string `json:"primaryCredential"`
-	SessionCredential string `json:"sessionCredential"`
+	ProdJLCCASSID     string `json:"PROD-JLC-CAS-SID"`
+	JLCGroupSessionID string `json:"JLCGROUP_SESSIONID"`
 	MobileAccessToken string `json:"mobileAccessToken"`
 	CanUseVoucher     int    `json:"canUseVoucher"`
 }
@@ -755,8 +755,8 @@ func buildGeneratedAccount(ctx context.Context, password string, cookies []*netw
 		CustomerCode:      customerCode,
 		Password:          password,
 		TGC:               authToken,
-		PrimaryCredential: primaryToken,
-		SessionCredential: sessionID,
+		ProdJLCCASSID:     primaryToken,
+		JLCGroupSessionID: sessionID,
 		MobileAccessToken: mobileAccessToken,
 		CanUseVoucher:     canUseVoucher,
 	}, nil

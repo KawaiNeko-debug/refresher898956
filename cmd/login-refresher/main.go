@@ -67,11 +67,7 @@ func main() {
 	})
 	results := refreshAccounts(ctx, loginRunner, group.Accounts, workers)
 
-	resultFields := refreshapi.CredentialFieldNames{
-		Primary: target.PrimaryCookieName,
-		Session: target.SessionCookieName,
-	}
-	if err := postResults(ctx, client, *managerURL, *jobID, *groupIndex, *token, results, resultFields); err != nil {
+	if err := postResults(ctx, client, *managerURL, *jobID, *groupIndex, *token, results); err != nil {
 		log.Fatalf("post results: %v", err)
 	}
 	status := refreshapi.LoginRefreshGroupStatusCompleted
@@ -127,8 +123,8 @@ func refreshAccounts(ctx context.Context, loginRunner *login.Runner, accounts []
 				CustomerCode:      result.CustomerCode,
 				Success:           true,
 				TGC:               result.TGC,
-				PrimaryCredential: result.PrimaryCredential,
-				SessionCredential: result.SessionCredential,
+				ProdJLCCASSID:     result.ProdJLCCASSID,
+				JLCGroupSessionID: result.JLCGroupSessionID,
 				MobileAccessToken: result.MobileAccessToken,
 				CanUseVoucher:     &voucher,
 				Message:           "ok",
@@ -166,8 +162,8 @@ func fetchGroup(ctx context.Context, client *http.Client, baseURL, jobID string,
 	return out, nil
 }
 
-func postResults(ctx context.Context, client *http.Client, baseURL, jobID string, groupIndex int, token string, results []refreshapi.LoginRefreshAccountResult, fields refreshapi.CredentialFieldNames) error {
-	body, err := json.Marshal(refreshapi.BuildLoginRefreshResultRequest(results, fields))
+func postResults(ctx context.Context, client *http.Client, baseURL, jobID string, groupIndex int, token string, results []refreshapi.LoginRefreshAccountResult) error {
+	body, err := json.Marshal(refreshapi.LoginRefreshResultRequest{Results: results})
 	if err != nil {
 		return err
 	}

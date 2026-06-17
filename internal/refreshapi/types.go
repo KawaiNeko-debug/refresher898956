@@ -28,16 +28,11 @@ type LoginRefreshAccountResult struct {
 	CustomerCode      string `json:"customerCode"`
 	Success           bool   `json:"success"`
 	TGC               string `json:"tgc,omitempty"`
-	PrimaryCredential string `json:"primaryCredential,omitempty"`
-	SessionCredential string `json:"sessionCredential,omitempty"`
+	ProdJLCCASSID     string `json:"PROD-JLC-CAS-SID,omitempty"`
+	JLCGroupSessionID string `json:"JLCGROUP_SESSIONID,omitempty"`
 	MobileAccessToken string `json:"mobileAccessToken,omitempty"`
 	CanUseVoucher     *int   `json:"canUseVoucher,omitempty"`
 	Message           string `json:"message,omitempty"`
-}
-
-type CredentialFieldNames struct {
-	Primary string
-	Session string
 }
 
 type LoginRefreshGroupCompleteRequest struct {
@@ -47,34 +42,4 @@ type LoginRefreshGroupCompleteRequest struct {
 
 func NormalizeCustomerCode(value string) string {
 	return strings.ToUpper(strings.TrimSpace(value))
-}
-
-func BuildLoginRefreshResultRequest(results []LoginRefreshAccountResult, fields CredentialFieldNames) map[string]any {
-	items := make([]map[string]any, 0, len(results))
-	for _, result := range results {
-		item := map[string]any{
-			"customerCode": result.CustomerCode,
-			"success":      result.Success,
-		}
-		if result.TGC != "" {
-			item["tgc"] = result.TGC
-		}
-		if result.PrimaryCredential != "" && fields.Primary != "" {
-			item[fields.Primary] = result.PrimaryCredential
-		}
-		if result.SessionCredential != "" && fields.Session != "" {
-			item[fields.Session] = result.SessionCredential
-		}
-		if result.MobileAccessToken != "" {
-			item["mobileAccessToken"] = result.MobileAccessToken
-		}
-		if result.CanUseVoucher != nil {
-			item["canUseVoucher"] = *result.CanUseVoucher
-		}
-		if result.Message != "" {
-			item["message"] = result.Message
-		}
-		items = append(items, item)
-	}
-	return map[string]any{"results": items}
 }
