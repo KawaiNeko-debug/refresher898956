@@ -1,0 +1,207 @@
+package login
+
+import (
+	"encoding/json"
+	"fmt"
+	"net/url"
+	"os"
+	"strings"
+)
+
+const targetConfigEnv = "REFRESH_TARGET_CONFIG"
+
+type TargetConfig struct {
+	LoginURL             string   `json:"loginUrl"`
+	PasswordLoginURL     string   `json:"passwordLoginUrl"`
+	CheckLoginURL        string   `json:"checkLoginUrl"`
+	SecretURL            string   `json:"secretUrl"`
+	WebLoginByCodeURL    string   `json:"webLoginByCodeUrl"`
+	MobileLoginByCodeURL string   `json:"mobileLoginByCodeUrl"`
+	UserInfoURL          string   `json:"userInfoUrl"`
+	BrowserCookieURLs    []string `json:"browserCookieUrls"`
+	LoginURLMarker       string   `json:"loginUrlMarker"`
+	AuthCookieName       string   `json:"authCookieName"`
+	PrimaryCookieName    string   `json:"primaryCookieName"`
+	SessionCookieName    string   `json:"sessionCookieName"`
+	CustomerCookieName   string   `json:"customerCookieName"`
+	WebAppID             string   `json:"webAppId"`
+	MobileAppID          string   `json:"mobileAppId"`
+	WebOrigin            string   `json:"webOrigin"`
+	WebReferer           string   `json:"webReferer"`
+	MobileOrigin         string   `json:"mobileOrigin"`
+	MobileReferer        string   `json:"mobileReferer"`
+	MobileAccessHeader   string   `json:"mobileAccessHeader"`
+	MobileClientHeader   string   `json:"mobileClientHeader"`
+	MobileClientType     string   `json:"mobileClientType"`
+	TempProfilePattern   string   `json:"tempProfilePattern"`
+}
+
+func LoadTargetConfigFromEnv() (TargetConfig, error) {
+	var config TargetConfig
+	if raw := strings.TrimSpace(os.Getenv(targetConfigEnv)); raw != "" {
+		if err := json.Unmarshal([]byte(raw), &config); err != nil {
+			return TargetConfig{}, fmt.Errorf("parse %s: %w", targetConfigEnv, err)
+		}
+	}
+
+	applyTargetEnv(&config)
+	config.normalize()
+	if err := config.validate(); err != nil {
+		return TargetConfig{}, err
+	}
+	return config, nil
+}
+
+func applyTargetEnv(config *TargetConfig) {
+	envString(&config.LoginURL, "TARGET_LOGIN_URL")
+	envString(&config.PasswordLoginURL, "TARGET_PASSWORD_LOGIN_URL")
+	envString(&config.CheckLoginURL, "TARGET_CHECK_LOGIN_URL")
+	envString(&config.SecretURL, "TARGET_SECRET_URL")
+	envString(&config.WebLoginByCodeURL, "TARGET_WEB_LOGIN_BY_CODE_URL")
+	envString(&config.MobileLoginByCodeURL, "TARGET_MOBILE_LOGIN_BY_CODE_URL")
+	envString(&config.UserInfoURL, "TARGET_USER_INFO_URL")
+	envList(&config.BrowserCookieURLs, "TARGET_BROWSER_COOKIE_URLS")
+	envString(&config.LoginURLMarker, "TARGET_LOGIN_URL_MARKER")
+	envString(&config.AuthCookieName, "TARGET_AUTH_COOKIE_NAME")
+	envString(&config.PrimaryCookieName, "TARGET_PRIMARY_COOKIE_NAME")
+	envString(&config.SessionCookieName, "TARGET_SESSION_COOKIE_NAME")
+	envString(&config.CustomerCookieName, "TARGET_CUSTOMER_COOKIE_NAME")
+	envString(&config.WebAppID, "TARGET_WEB_APP_ID")
+	envString(&config.MobileAppID, "TARGET_MOBILE_APP_ID")
+	envString(&config.WebOrigin, "TARGET_WEB_ORIGIN")
+	envString(&config.WebReferer, "TARGET_WEB_REFERER")
+	envString(&config.MobileOrigin, "TARGET_MOBILE_ORIGIN")
+	envString(&config.MobileReferer, "TARGET_MOBILE_REFERER")
+	envString(&config.MobileAccessHeader, "TARGET_MOBILE_ACCESS_HEADER")
+	envString(&config.MobileClientHeader, "TARGET_MOBILE_CLIENT_HEADER")
+	envString(&config.MobileClientType, "TARGET_MOBILE_CLIENT_TYPE")
+	envString(&config.TempProfilePattern, "TARGET_TEMP_PROFILE_PATTERN")
+}
+
+func (config *TargetConfig) normalize() {
+	config.LoginURL = strings.TrimSpace(config.LoginURL)
+	config.PasswordLoginURL = strings.TrimSpace(config.PasswordLoginURL)
+	config.CheckLoginURL = strings.TrimSpace(config.CheckLoginURL)
+	config.SecretURL = strings.TrimSpace(config.SecretURL)
+	config.WebLoginByCodeURL = strings.TrimSpace(config.WebLoginByCodeURL)
+	config.MobileLoginByCodeURL = strings.TrimSpace(config.MobileLoginByCodeURL)
+	config.UserInfoURL = strings.TrimSpace(config.UserInfoURL)
+	config.LoginURLMarker = strings.TrimSpace(config.LoginURLMarker)
+	config.AuthCookieName = strings.TrimSpace(config.AuthCookieName)
+	config.PrimaryCookieName = strings.TrimSpace(config.PrimaryCookieName)
+	config.SessionCookieName = strings.TrimSpace(config.SessionCookieName)
+	config.CustomerCookieName = strings.TrimSpace(config.CustomerCookieName)
+	config.WebAppID = strings.TrimSpace(config.WebAppID)
+	config.MobileAppID = strings.TrimSpace(config.MobileAppID)
+	config.WebOrigin = strings.TrimRight(strings.TrimSpace(config.WebOrigin), "/")
+	config.MobileOrigin = strings.TrimRight(strings.TrimSpace(config.MobileOrigin), "/")
+	config.WebReferer = strings.TrimSpace(config.WebReferer)
+	config.MobileReferer = strings.TrimSpace(config.MobileReferer)
+	config.MobileAccessHeader = strings.TrimSpace(config.MobileAccessHeader)
+	config.MobileClientHeader = strings.TrimSpace(config.MobileClientHeader)
+	config.MobileClientType = strings.TrimSpace(config.MobileClientType)
+	config.TempProfilePattern = strings.TrimSpace(config.TempProfilePattern)
+
+	if config.LoginURLMarker == "" {
+		config.LoginURLMarker = config.LoginURL
+	}
+	if config.WebReferer == "" && config.WebOrigin != "" {
+		config.WebReferer = config.WebOrigin + "/"
+	}
+	if config.MobileReferer == "" && config.MobileOrigin != "" {
+		config.MobileReferer = config.MobileOrigin + "/"
+	}
+	if config.MobileClientType == "" {
+		config.MobileClientType = "WEB"
+	}
+	if config.TempProfilePattern == "" {
+		config.TempProfilePattern = "login-profile-*"
+	}
+
+	config.BrowserCookieURLs = compactList(config.BrowserCookieURLs)
+	if len(config.BrowserCookieURLs) == 0 {
+		config.BrowserCookieURLs = compactList([]string{
+			originRoot(config.LoginURL),
+			originRoot(config.WebOrigin),
+			originRoot(config.MobileOrigin),
+		})
+	}
+}
+
+func (config TargetConfig) validate() error {
+	required := map[string]string{
+		"loginUrl":                config.LoginURL,
+		"passwordLoginUrl":        config.PasswordLoginURL,
+		"checkLoginUrl":           config.CheckLoginURL,
+		"secretUrl":               config.SecretURL,
+		"webLoginByCodeUrl":       config.WebLoginByCodeURL,
+		"mobileLoginByCodeUrl":    config.MobileLoginByCodeURL,
+		"userInfoUrl":             config.UserInfoURL,
+		"authCookieName":          config.AuthCookieName,
+		"primaryCookieName":       config.PrimaryCookieName,
+		"sessionCookieName":       config.SessionCookieName,
+		"customerCookieName":      config.CustomerCookieName,
+		"webAppId":                config.WebAppID,
+		"mobileAppId":             config.MobileAppID,
+		"webOrigin":               config.WebOrigin,
+		"mobileOrigin":            config.MobileOrigin,
+		"mobileAccessHeader":      config.MobileAccessHeader,
+		"mobileClientHeader":      config.MobileClientHeader,
+		"tempProfilePattern":      config.TempProfilePattern,
+	}
+	for name, value := range required {
+		if strings.TrimSpace(value) == "" {
+			return fmt.Errorf("missing target config value %q in %s or TARGET_* environment variables", name, targetConfigEnv)
+		}
+	}
+	if len(config.BrowserCookieURLs) == 0 {
+		return fmt.Errorf("missing target config value %q in %s or TARGET_* environment variables", "browserCookieUrls", targetConfigEnv)
+	}
+	return nil
+}
+
+func envString(target *string, key string) {
+	if value := strings.TrimSpace(os.Getenv(key)); value != "" {
+		*target = value
+	}
+}
+
+func envList(target *[]string, key string) {
+	value := strings.TrimSpace(os.Getenv(key))
+	if value == "" {
+		return
+	}
+	*target = splitList(value)
+}
+
+func splitList(value string) []string {
+	fields := strings.FieldsFunc(value, func(r rune) bool {
+		return r == ',' || r == '\n' || r == '\r'
+	})
+	return compactList(fields)
+}
+
+func compactList(values []string) []string {
+	out := make([]string, 0, len(values))
+	seen := make(map[string]struct{}, len(values))
+	for _, value := range values {
+		value = strings.TrimSpace(value)
+		if value == "" {
+			continue
+		}
+		if _, exists := seen[value]; exists {
+			continue
+		}
+		seen[value] = struct{}{}
+		out = append(out, value)
+	}
+	return out
+}
+
+func originRoot(raw string) string {
+	parsed, err := url.Parse(strings.TrimSpace(raw))
+	if err != nil || parsed.Scheme == "" || parsed.Host == "" {
+		return ""
+	}
+	return parsed.Scheme + "://" + parsed.Host + "/"
+}

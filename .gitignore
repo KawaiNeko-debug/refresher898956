@@ -1,0 +1,17 @@
+.DS_Store
+*.log
+coverage.out
+tmp/
+dist/
+bin/
+worker-logs/
+manager-data/
+accounts/
+*account*.json
+*accounts*.json
+*.local.json
+*.env
+.env
+.env.*
+/login-refresher
+.gocache/
