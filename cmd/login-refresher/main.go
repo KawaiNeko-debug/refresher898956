@@ -125,7 +125,6 @@ func refreshAccounts(ctx context.Context, loginRunner *login.Runner, accounts []
 				TGC:               result.TGC,
 				ProdJLCCASSID:     result.ProdJLCCASSID,
 				JLCGroupSessionID: result.JLCGroupSessionID,
-				MobileAccessToken: result.MobileAccessToken,
 				CanUseVoucher:     &voucher,
 				Message:           "ok",
 			}

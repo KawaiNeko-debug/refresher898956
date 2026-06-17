@@ -30,7 +30,6 @@ type LoginRefreshAccountResult struct {
 	TGC               string `json:"tgc,omitempty"`
 	ProdJLCCASSID     string `json:"PROD-JLC-CAS-SID,omitempty"`
 	JLCGroupSessionID string `json:"JLCGROUP_SESSIONID,omitempty"`
-	MobileAccessToken string `json:"mobileAccessToken,omitempty"`
 	CanUseVoucher     *int   `json:"canUseVoucher,omitempty"`
 	Message           string `json:"message,omitempty"`
 }
